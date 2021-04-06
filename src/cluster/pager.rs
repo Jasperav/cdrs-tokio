@@ -106,6 +106,10 @@ pub struct QueryPager<'a, Q: ToString, P: 'a> {
 impl<'a, Q: ToString, T: CdrsTransport + Unpin + 'static, S: CdrsSession<T> + Sync + Send>
     QueryPager<'a, Q, SessionPager<'a, S, T>>
 {
+    pub fn into_pager_state(self) -> PagerState {
+        self.pager_state
+    }
+
     pub async fn next(&mut self) -> error::Result<Vec<Row>> {
         let mut params = QueryParamsBuilder::new()
             .consistency(self.consistency)
@@ -124,7 +128,7 @@ impl<'a, Q: ToString, T: CdrsTransport + Unpin + 'static, S: CdrsSession<T> + Sy
             .session
             .query_with_params(query, params.finalize())
             .await
-            .and_then(|frame| frame.get_body())?;
+            .and_then(|frame| frame.body())?;
 
         let metadata_res: error::Result<RowsMetadata> = body
             .as_rows_metadata()
@@ -158,6 +162,10 @@ pub struct ExecPager<'a, P: 'a> {
 impl<'a, T: CdrsTransport + Unpin + 'static, S: CdrsSession<T> + Sync + Send>
     ExecPager<'a, SessionPager<'a, S, T>>
 {
+    pub fn into_pager_state(self) -> PagerState {
+        self.pager_state
+    }
+
     pub async fn next(&mut self) -> error::Result<Vec<Row>> {
         let mut params = QueryParamsBuilder::new().page_size(self.pager.page_size);
         if self.pager_state.cursor.is_some() {
@@ -169,7 +177,7 @@ impl<'a, T: CdrsTransport + Unpin + 'static, S: CdrsSession<T> + Sync + Send>
             .session
             .exec_with_params(self.query, params.finalize())
             .await
-            .and_then(|frame| frame.get_body())?;
+            .and_then(|frame| frame.body())?;
 
         let metadata_res: error::Result<RowsMetadata> = body
             .as_rows_metadata()
@@ -223,7 +231,11 @@ impl PagerState {
         self.has_more_pages.unwrap_or(false)
     }
 
-    pub fn get_cursor(&self) -> Option<CBytes> {
+    pub fn cursor(&self) -> Option<CBytes> {
         self.cursor.clone()
+    }
+
+    pub fn into_cursor(self) -> Option<CBytes> {
+        self.cursor
     }
 }

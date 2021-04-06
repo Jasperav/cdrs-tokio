@@ -78,7 +78,10 @@ impl ManageConnection for TcpConnectionsManager {
 
     async fn is_valid(&self, conn: &mut PooledConnection<'_, Self>) -> Result<(), Self::Error> {
         let options_frame = Frame::new_req_options().as_bytes();
-        conn.lock().await.write(options_frame.as_slice()).await?;
+        conn.lock()
+            .await
+            .write_all(options_frame.as_slice())
+            .await?;
 
         parse_frame(&conn, Compression::None).await.map(|_| ())
     }
@@ -103,7 +106,7 @@ pub async fn startup<
     transport
         .lock()
         .await
-        .write(startup_frame.as_slice())
+        .write_all(startup_frame.as_slice())
         .await?;
 
     let start_response = parse_frame(transport, compression).await?;
@@ -113,8 +116,8 @@ pub async fn startup<
     }
 
     if start_response.opcode == Opcode::Authenticate {
-        let body = start_response.get_body()?;
-        let authenticator = body.get_authenticator().expect(
+        let body = start_response.body()?;
+        let authenticator = body.authenticator().expect(
             "Cassandra Server did communicate that it needed
                 authentication but the auth schema was missing in the body response",
         );
@@ -127,7 +130,7 @@ pub async fn startup<
         // 3. if it falls through it means the preliminary conditions are true
 
         let auth_check = session_authenticator
-            .get_cassandra_name()
+            .cassandra_name()
             .ok_or_else(|| error::Error::General("No authenticator was provided".to_string()))
             .map(|auth| {
                 if authenticator != auth {
@@ -148,11 +151,11 @@ pub async fn startup<
             return Err(err);
         }
 
-        let auth_token_bytes = session_authenticator.get_auth_token();
+        let auth_token_bytes = session_authenticator.auth_token();
         transport
             .lock()
             .await
-            .write(
+            .write_all(
                 Frame::new_req_auth_response(auth_token_bytes)
                     .as_bytes()
                     .as_slice(),
@@ -176,7 +179,7 @@ pub async fn startup<
             transport
                 .lock()
                 .await
-                .write(use_frame.as_bytes().as_slice())
+                .write_all(use_frame.as_bytes().as_slice())
                 .await?;
             parse_frame(transport, compression).await?;
         }

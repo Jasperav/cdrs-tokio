@@ -41,7 +41,7 @@ pub struct Session<LB> {
 
 impl<LB> GetCompressor for Session<LB> {
     /// Returns compression that current session has.
-    fn get_compressor(&self) -> Compression {
+    fn compressor(&self) -> Compression {
         self.compression
     }
 }
@@ -66,7 +66,7 @@ impl<
         LB: LoadBalancingStrategy<ConnectionPool<T>> + Send + Sync,
     > GetConnection<T> for Session<LB>
 {
-    async fn get_connection(&self) -> Option<Arc<ConnectionPool<T>>> {
+    async fn connection(&self) -> Option<Arc<ConnectionPool<T>>> {
         if cfg!(feature = "unstable-dynamic-cluster") {
             if let Some(ref event_stream_mx) = self.event_stream {
                 if let Ok(ref mut event_stream) = event_stream_mx.try_lock() {
@@ -82,7 +82,7 @@ impl<
                                 self.load_balancing
                                     .lock()
                                     .await
-                                    .remove_node(|pool| pool.get_addr() == addr.addr);
+                                    .remove_node(|pool| pool.addr() == addr.addr);
                             }
                             Some(_) => continue,
                         }
@@ -585,7 +585,7 @@ impl<L> Session<L> {
         authenticator: &A,
         events: Vec<SimpleServerEvent>,
     ) -> error::Result<(Listener<Mutex<TransportTcp>>, EventStream)> {
-        let compression = self.get_compressor();
+        let compression = self.compressor();
         let keyspace_holder = Arc::new(KeyspaceHolder::default());
         let transport = TransportTcp::new(node, keyspace_holder.clone())
             .await
@@ -594,7 +594,11 @@ impl<L> Session<L> {
         startup(&transport, authenticator, keyspace_holder.deref()).await?;
 
         let query_frame = Frame::new_req_register(events).as_bytes();
-        transport.lock().await.write(query_frame.as_slice()).await?;
+        transport
+            .lock()
+            .await
+            .write_all(query_frame.as_slice())
+            .await?;
         parse_frame(&transport, compression).await?;
 
         Ok(new_listener(transport))

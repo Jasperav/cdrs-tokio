@@ -52,7 +52,7 @@ async fn list() {
         .query(cql)
         .await
         .expect("query lists error")
-        .get_body()
+        .body()
         .expect("get body with lists error")
         .into_rows()
         .expect("converting body with lists into rows error");
@@ -82,7 +82,6 @@ async fn list() {
 }
 
 #[tokio::test]
-#[ignore]
 #[cfg(all(feature = "v4", feature = "e2e-tests"))]
 async fn list_v4() {
     let cql = "CREATE TABLE IF NOT EXISTS cdrs_test.test_lists_v4 \
@@ -111,7 +110,7 @@ async fn list_v4() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
@@ -169,7 +168,7 @@ async fn set() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
@@ -227,7 +226,7 @@ async fn set_v4() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
@@ -298,7 +297,7 @@ async fn map_without_blob() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
@@ -368,7 +367,7 @@ async fn map_without_blob_v4() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
@@ -438,7 +437,7 @@ async fn map() {
         .query(cql)
         .await
         .expect("query")
-        .get_body()
+        .body()
         .expect("get body")
         .into_rows()
         .expect("into rows");
